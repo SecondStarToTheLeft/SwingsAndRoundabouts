@@ -1,5 +1,5 @@
 """
-TODO simple pendulum model object using the function with no d/r portions
+TODO simple pendulum model object using the function with no d/L portions
 TODO expand to include the dr functions
 TODO add 'pumping' object to simplify code
     - 1. instantaneous change
@@ -8,30 +8,30 @@ NB - Gravity acts in the positive x axis to match the assignement doc
 
 """
 import numpy as np
-from scipy.integrate import odeint, solve_ivp
+from scipy.integrate import solve_ivp
 
 
 class SimplePendulum:
     """
     Simple pendulum model based on the equation:
-    d²θ/dt² = -(g/r) sin(θ)
-    simplified from the polar NII where r is kept the same
+    d²θ/dt² = -(G/L) sin(θ)
+    simplified from the polar NII where L is kept the same
 
     N.B
         - This is only the ODE acting in the e_theta direction
         - Mass doesn't contribute in this direction, so not currently a variable
     """
 
-    def __init__(self,r = 1.0 , g=9.81, m=1.0,theta0=np.pi / 4, omega0=1.0):
+    def __init__(self, r = 1.0, g=9.81, m=1.0, theta0=np.pi / 4, omega0=1.0):
         """
-        Initialize pendulum parameters.
+        Initialize pendulum paramters.
         Used to define the simple pendulum var with parameters
 
         Parameters:
         -----------
-        r : float ( constant )
+        L : float ( constant )
             Length of pendulum (m)
-        g : float
+        G : float
             Gravitational acceleration (m/s^2)
         theta0 : float
             Initial angle (radians, measured from vertical)
@@ -41,22 +41,21 @@ class SimplePendulum:
             default = 1.0
         """
 
-        self.r =r
+        self.r = r
         self.g = g
         self.m = m
         self.theta0 = theta0
         self.omega0 = omega0
-        self.K = g /r  # Constant from the equation
+        self.K = g / r  # Constant from the equation
         # TODO K will no longer be constant once we complicate the model, this needs to be adjusted
 
         # Creates empty var for solution, this is hte info we plot
-        self.t = None       # time
-        self.theta = None   # angular displacement
-        self.omega = None   # angular velocity
-        self.alpha = None   # angular acceleration
+        self.t = None  # time
+        self.theta = None  # angular displacement
+        self.omega = None  # angular velocity
+        self.alpha = None  # angular acceleration
 
-
-    def derivatives(self,t, state):
+    def derivatives(self, t, state):
         """
         Calculate derivatives for the ODE system.
         Input:
@@ -67,17 +66,17 @@ class SimplePendulum:
         """
         theta, omega = state
 
-        dtheta_dt = omega #See state vector on doc
-        domega_dt = -self.K * np.sin(theta) #This is the equation of motion
+        dtheta_dt = omega  # See state vector on doc
+        domega_dt = -self.K * np.sin(theta)  # This is the equation of motion
 
         return [dtheta_dt, domega_dt]
 
-    def solve(self, time_range= (0,10), dt=0.01):
+    def solve(self, time_range=(0, 10), dt=0.01):
         """
         Solve the pendulum equation as set of 2 first order ODEs
 
             theta'(t) = omega(t)
-            omega'(t) = -(g/L)*(sin(theta(t)))
+            omega'(t) = -(G/L)*(sin(theta(t)))
 
         Parameters:
         -----------
@@ -98,23 +97,22 @@ class SimplePendulum:
         solution = solve_ivp(
             self.derivatives,
             t_span=time_range,
-            y0= initial_state,
+            y0=initial_state,
             t_eval=t_eval_points,
-            rtol=1e-5, #added as num error was causing total energy to change in a closed system
+            rtol=1e-5,  # added as num error was causing total energy to change in a closed system
             atol=1e-5
         )
         if not solution.success:
             raise RuntimeError(f"Integration failed")
 
         self.t = solution.t
-        self.theta = solution.y[0, : ]
+        self.theta = solution.y[0, :]
         self.omega = solution.y[1, :]
         self.alpha = -(self.g / self.r) * np.sin(self.theta)
 
         return self.t, self.theta, self.omega
 
-    #TODO define a function to get the angular acceleration of the system as well to plot (alpha) i.e d2theta
-
+        # TODO define a function to get the angular acceleration of the system as well to plot (alpha) i.e d2theta
 
     def get_cartesian_position(self):
         """
@@ -128,11 +126,10 @@ class SimplePendulum:
         if self.theta is None:
             raise ValueError("No angles found")
 
-
-        x = self.r * np.cos(self.theta) # remember for plotting that x points down
+        x = self.r * np.cos(self.theta)  # remember for plotting that x points down
         y = self.r * np.sin(self.theta)
 
-        #TODO set x to minus here or later?
+        # TODO set x to minus here or later?
 
         return x, y
 
@@ -147,12 +144,11 @@ class SimplePendulum:
             raise ValueError("Must call solve() first")
 
         # Kinetic energy: using standard angular motion kinetic
-        KE = 0.5*self.m * self.r ** 2 * self.omega ** 2
+        KE = 0.5 * self.m * self.r ** 2 * self.omega ** 2
 
-        # Potential energy: m g h = m g r (1 - cos(θ))
+        # Potential energy: m G h = m G r (1 - cos(θ))
         PE = self.m * self.g * self.r * (1 - np.cos(self.theta))
 
         total = KE + PE
 
         return KE, PE, total
-

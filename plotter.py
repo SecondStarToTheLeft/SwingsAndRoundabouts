@@ -7,6 +7,7 @@ TODO plots potential vs kinetic over time
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
+from scipy.signal import find_peaks
 
 from pendulum import SimplePendulum
 def plot_motion_2d(pendulum):
@@ -107,6 +108,10 @@ def animate_pendulum(pendulum, interval=10, shadow_frame=50):
     fig, ax = plt.subplots(figsize=(10, 10))
 
     # Set axis limits with some padding
+    r_max = np.max(pendulum.r)
+    ax.set_xlim(-1.3 * r_max, 1.3 * r_max)
+    ax.set_ylim(-1.3 * r_max, 1.3 * r_max)
+
     r = pendulum.r
     ax.set_xlim(-1.3 * r, 1.3 * r)  # y-axis (horizontal)
     ax.set_ylim(-1.3 * r, 1.3 * r)  # x-axis (vertical, will be inverted)
@@ -153,4 +158,66 @@ def animate_pendulum(pendulum, interval=10, shadow_frame=50):
     return anim
 
 
+def plot_quick_summary(pendulum):
+    """
+    Quick 1x3 summary plot with just the key requested plots.
+    """
+    if pendulum.theta is None:
+        raise ValueError("Must solve pendulum first")
 
+    KE, PE, total_E = pendulum.get_energy()
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+    fig.suptitle('Quick Summary', fontsize=14, fontweight='bold')
+
+    # 1. Energy vs time
+    ax = axes[0]
+    ax.plot(pendulum.t, total_E, 'k-', linewidth=2)
+    E_gain = (total_E[-1] - total_E[0]) / total_E[0] * 100
+    ax.text(0.5, 0.95, f'Gain: {E_gain:+.1f}%',
+            transform=ax.transAxes, ha='center', va='top',
+            fontsize=12, bbox=dict(boxstyle='round', facecolor='yellow'))
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Total Energy (J)')
+    ax.set_title('Energy vs Time')
+    ax.grid(True)
+
+    # 2. Amplitude growth
+    ax = axes[1]
+    theta_abs = np.abs(pendulum.theta)
+    peaks, _ = find_peaks(theta_abs, distance=50)
+    if len(peaks) > 0:
+        ax.plot(pendulum.t[peaks], np.degrees(theta_abs[peaks]),
+                'ro-', markersize=8, linewidth=2)
+    ax.axhline(180, color='g', linestyle='--', linewidth=2, alpha=0.5)
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Amplitude (degrees)')
+    ax.set_title('Amplitude Growth')
+    ax.grid(True)
+
+    # 3. r(t) control
+    ax = axes[2]
+    ax.plot(pendulum.t, pendulum.r, 'g-', linewidth=2)
+    ax.axhline(pendulum.r_min, color='b', linestyle='--', alpha=0.5)
+    ax.axhline(pendulum.r_max, color='r', linestyle='--', alpha=0.5)
+    ax.fill_between(pendulum.t, pendulum.r_min, pendulum.r_max,
+                    alpha=0.1, color='gray')
+    ax.set_xlabel('Time (s)')
+    ax.set_ylabel('Length r (m)')
+    ax.set_title('Control Action r(t)')
+    ax.grid(True)
+
+    plt.tight_layout()
+    return fig
+
+
+
+def plot_velocity_at_bottom(pendulum):
+
+    t_bot, v_bot = pendulum.get_bottom_crossing_velocities()
+    fig = plt.figure(figsize=(5, 3))
+    plt.scatter(t_bot, v_bot, color='red', label='v at theta=0')
+    plt.plot(t_bot, v_bot, 'r--', alpha=0.5)
+    plt.grid(True)
+
+    return fig
